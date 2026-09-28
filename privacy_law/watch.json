@@ -1,0 +1,34 @@
+{
+  "laws": [
+    {
+      "name": "개인정보 보호법",
+      "articles": {
+        "3": ["privacy"],
+        "15": ["collect", "privacy"],
+        "16": ["collect"],
+        "17": ["collect", "privacy"],
+        "18": ["collect", "privacy"],
+        "21": ["collect", "privacy"],
+        "22": ["collect", "terms"],
+        "22의2": ["collect", "terms"],
+        "23": ["collect", "privacy"],
+        "24": ["collect", "privacy"],
+        "24의2": ["collect", "privacy"],
+        "26": ["privacy"],
+        "28의8": ["privacy"],
+        "30": ["privacy"],
+        "35": ["privacy"],
+        "36": ["privacy"],
+        "37": ["privacy"],
+        "37의2": ["privacy"],
+        "39의6": ["privacy"]
+      }
+    },
+    {
+      "name": "정보통신망 이용촉진 및 정보보호 등에 관한 법률",
+      "articles": {
+        "50": ["marketing", "collect"]
+      }
+    }
+  ]
+}

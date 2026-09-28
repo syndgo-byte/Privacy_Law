@@ -13,4 +13,4 @@ dependencies = []
 packages = ["privacy_law"]
 
 [tool.setuptools.package-data]
-privacy_law = ["texts/*"]
+privacy_law = ["texts/*", "watch.json"]

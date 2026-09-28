@@ -47,3 +47,20 @@ consents.outdated(username)        # 문구 개정 후 재동의가 필요한 �
 
 폐쇄망은 개인정보 처리자가 **고객 사업장**이므로 가입 화면 동의를 받지 않습니다(`enabled=False`, auth_core 가 라이선스로 자동 판단).
 판매 시점의 `texts/` 문구를 참고용으로 함께 전달하고, 이후 개정은 사업장이 맡습니다.
+
+## 법령 개정 감시 (mcp_hub 가 매일 실행)
+
+| 파일 | 역할 |
+|---|---|
+| `watch.json` | 감시할 법령과 조문 → 영향 문서 매핑 (예: 개인정보 보호법 제15조 → collect, privacy) |
+| `law_fetcher.py` | 법제처 Open API(DRF): 현행 법령 버전(MST) · 조문 |
+| `change_detector.py` | 조 단위 비교, 영향 문서 선택 |
+| `suggestion_engine.py` | 수정 요청문 · 수정안(자동: Claude API / 수동: Claude Code) · `proposals/` 저장 |
+| `approval_workflow.py` | 승인(문구 반영 + 버전 올림 → 재동의 발생 + git 커밋) · 거절 · 감사 기록 |
+| `watch.py` | 한 바퀴 실행: `python -m privacy_law.watch` |
+
+- 환경변수: `LAW_OC`(법제처 인증키, 필수) · `ANTHROPIC_API_KEY`(있으면 자동 초안) · `PRIVACY_LAW_MODEL`(기본 claude-sonnet-5)
+- 처음 실행은 기준 스냅샷(`snapshots/`)만 저장. 이후 법령일련번호가 바뀌면 조문을 비교해 제안을 만든다.
+- 제안 상태: `needs_draft`(수정안 없음) → `pending`(검토 대기) → `approved` / `rejected`. 기록은 `.audit/audit.jsonl`.
+- 수동 모드: Claude Code 에 "Privacy_Law 수정안 만들어줘" → `proposals/<id>/prompt.md` 대로 수정안을 쓰고 허브의 초안 입력으로 넣는다.
+- 승인 시 원문이 제안 이후 바뀌었으면(editor 로 누가 고침) 승인을 거부한다 — 거절 후 다시 감지되게 한다.
