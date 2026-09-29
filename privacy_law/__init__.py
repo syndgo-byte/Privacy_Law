@@ -39,6 +39,24 @@ CREATE TABLE IF NOT EXISTS auth_consents (
 _INDEX = "CREATE INDEX IF NOT EXISTS idx_auth_consents_user ON auth_consents(username, doc_key)"
 _VAR = re.compile(r"\{\{\s*(\w+)\s*\}\}")
 
+# 서비스가 넘기지 않은 변수의 기본 문구. 서비스마다 다른 사실(위탁 업체 · 보호책임자 등)은 서비스가
+# values 로 넘겨야 하며, 기본값은 "해당 없음" 쪽으로만 둔다 — 사실이 아닌 내용을 지어내지 않도록.
+DEFAULT_VALUES = {
+    "retention_by_law": (
+        "- 계약 또는 청약철회 등에 관한 기록: 5년 (전자상거래 등에서의 소비자보호에 관한 법률)<br>\n"
+        "- 대금 결제 및 재화 등의 공급에 관한 기록: 5년 (전자상거래 등에서의 소비자보호에 관한 법률)<br>\n"
+        "- 소비자의 불만 또는 분쟁 처리에 관한 기록: 3년 (전자상거래 등에서의 소비자보호에 관한 법률)<br>\n"
+        "- 서비스 접속 기록(로그인 기록, 접속 IP): 3개월 (통신비밀보호법)"
+    ),
+    "third_parties": "현재 서비스는 개인정보를 제3자에게 제공하지 않습니다.",
+    "processors": "현재 서비스는 개인정보 처리 업무를 위탁하지 않습니다.",
+    "overseas_transfer": "서비스는 개인정보를 국외로 이전하지 않습니다.",
+    "cookies": "서비스는 로그인 상태 유지를 위하여 세션 쿠키를 사용하며, 광고 · 행태 분석 목적의 쿠키는 사용하지 않습니다.",
+    # 법(제31조)상 성명 · 연락처가 들어가야 한다 — 서비스가 반드시 실제 값으로 넘길 것
+    "privacy_officer": "- 개인정보 보호책임자: 서비스 운영사 (성명 · 연락처 기재 필요)",
+    "effective_date": "2026년 9월 29일",
+}
+
 
 @dataclass(frozen=True)
 class ConsentDoc:
@@ -59,7 +77,7 @@ class ConsentBook:
         self._connect = connect
         self.enabled = enabled
         self.dir = Path(texts_dir)   # 기본은 auth_core 안의 texts (테스트에서만 바꿈)
-        self.values = dict(values or {})
+        self.values = {**DEFAULT_VALUES, **(values or {})}
         self._cache: dict[Path, tuple[float, str]] = {}
 
     # ---- 문서 ----
