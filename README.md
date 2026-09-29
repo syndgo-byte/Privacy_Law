@@ -1,6 +1,6 @@
 # privacy_law — 개인정보 법정 문구 · 가입 동의 공용 모듈
 
-마지막 업데이트: 2026-09-29 20:02
+마지막 업데이트: 2026-09-29 22:25
 
 > 개인정보 보호법 등 법령 바뀔 때 마다 검증하고 반영하는 MCP
 
@@ -36,7 +36,7 @@ Master MCP Hub 아래 웹 서비스(EMS, 이후 카드·장례 등)가 같이 �
 ## 서비스에서 쓰는 법
 
 ```python
-# pip install -e D:\Vibe_coding\Privacy_Law
+# pip install -e D:\Vibe_coding\modules\Privacy_Law
 # 보통은 auth_core 를 통해 쓴다 (에디션에 따라 자동으로 켜고 끔)
 consents = auth.attach_consents(get_db, values={"service_desc": "...", "collect_items": "..."})
 consents.form_documents()          # 가입 화면에 보일 동의 항목
