@@ -3,3 +3,12 @@ __pycache__/
 *.db
 .pytest_cache/
 *.tmp
+# 감시 상태 · 인증키 (git 에 올리지 않음)
+.secrets.json
+snapshots/
+proposals/
+reports/
+sources/
+profiles/
+.audit/
+.handoff/

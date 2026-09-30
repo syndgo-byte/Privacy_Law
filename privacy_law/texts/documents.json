@@ -1,6 +1,6 @@
 [
   {"key": "terms",     "title": "이용약관",                 "required": true,  "version": "2026-09-28", "file": "terms.html"},
-  {"key": "privacy",   "title": "개인정보 처리방침",         "required": true,  "version": "2026-09-29", "file": "privacy.html"},
+  {"key": "privacy",   "title": "개인정보 처리방침",         "required": true,  "version": "2026-09-30", "file": "privacy.html"},
   {"key": "collect",   "title": "개인정보 수집 · 이용",      "required": true,  "version": "2026-09-28", "file": "collect.html"},
   {"key": "marketing", "title": "마케팅 정보 수신",          "required": false, "version": "2026-09-28"}
 ]

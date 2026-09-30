@@ -4,7 +4,8 @@
   - texts/documents.json : 문서 목록(키 · 제목 · 필수 여부 · 버전 · 본문 파일)
   - texts/*.html         : 본문. {{ 변수 }} 는 서비스가 넘긴 values 로 채운다 (예: {{ service_name }}, {{ collect_items }})
   - 파일을 고치면 재시작 없이 다음 요청부터 반영된다(수정 시각 확인).
-  - 서비스는 문구를 바꿀 수 없다(덮어쓰기 없음) — 서비스마다 다른 것은 values 로만 넘긴다.
+  - 서비스마다 다른 것은 ServiceProfile(profile.py)로 넘긴다: 처리 사실(practice) → 문구 변수 자동 생성,
+    서비스 고유 조항(sections), 필요하면 서비스 전용 문서 폴더(texts_dir). 점검은 requirements.py.
 
 문구를 크게 바꾸면 documents.json 의 version 을 올린다. 동의 기록(auth_consents)에 동의한 버전이 남으므로
 outdated(username) 로 재동의가 필요한 문서를 알 수 있다.
@@ -18,13 +19,16 @@ outdated(username) 로 재동의가 필요한 문서를 알 수 있다.
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 DEFAULT_DIR = Path(__file__).resolve().parent / "texts"
+# 감시 상태(snapshots · proposals · reports · sources) 와 .secrets.json 을 두는 곳
+HOME = Path(os.environ.get("PRIVACY_LAW_HOME") or Path(__file__).resolve().parent.parent)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS auth_consents (
@@ -54,7 +58,13 @@ DEFAULT_VALUES = {
     "cookies": "서비스는 로그인 상태 유지를 위하여 세션 쿠키를 사용하며, 광고 · 행태 분석 목적의 쿠키는 사용하지 않습니다.",
     # 법(제31조)상 성명 · 연락처가 들어가야 한다 — 서비스가 반드시 실제 값으로 넘길 것
     "privacy_officer": "- 개인정보 보호책임자: 서비스 운영사 (성명 · 연락처 기재 필요)",
-    "effective_date": "2026년 9월 29일",
+    # 제22조③: 동의 없이 처리하는 개인정보는 항목과 법적 근거를 동의 받는 것과 구분해 공개
+    "legal_basis": (
+        "- 관계 법령에 따라 보존하는 거래 · 접속 기록(제3조의 보존 항목): "
+        "「개인정보 보호법」 제15조제1항제2호(법령상 의무 준수)"
+    ),
+    "service_sections": "",          # 서비스 고유 조항 (ServiceProfile.sections)
+    "effective_date": "2026년 9월 30일",
 }
 
 
@@ -73,11 +83,15 @@ class ConsentDoc:
 
 
 class ConsentBook:
-    def __init__(self, connect=None, *, values: dict | None = None, texts_dir=DEFAULT_DIR, enabled: bool = True):
+    def __init__(self, connect=None, *, values: dict | None = None, texts_dir=None, enabled: bool = True,
+                 profile=None):
+        """profile: ServiceProfile — 서비스의 처리 사실(practice)로 문구 변수를 채우고, 서비스 고유 조항을 붙인다.
+        우선순위: values 인자 > profile.values > profile.practice 에서 만든 값 > DEFAULT_VALUES."""
         self._connect = connect
         self.enabled = enabled
-        self.dir = Path(texts_dir)   # 기본은 auth_core 안의 texts (테스트에서만 바꿈)
-        self.values = {**DEFAULT_VALUES, **(values or {})}
+        self.profile = profile
+        self.dir = Path(texts_dir or (profile.texts_dir if profile and profile.texts_dir else DEFAULT_DIR))
+        self.values = {**DEFAULT_VALUES, **(profile.rendered_values() if profile else {}), **(values or {})}
         self._cache: dict[Path, tuple[float, str]] = {}
 
     # ---- 문서 ----
@@ -111,7 +125,10 @@ class ConsentBook:
         doc = self.get(key)
         if not doc.file:
             return ""
-        return _VAR.sub(lambda m: str(self.values.get(m.group(1), m.group(0))), self._read(self.dir / doc.file))
+        values = self.values
+        if self.profile and self.profile.sections.get(key):
+            values = {**values, "service_sections": self.profile.sections[key]}
+        return _VAR.sub(lambda m: str(values.get(m.group(1), m.group(0))), self._read(self.dir / doc.file))
 
     def missing(self, agreements: dict) -> ConsentDoc | None:
         """agreements = {문서 키: 체크 값}. 빠진 필수 동의가 있으면 그 문서, 없으면 None."""
@@ -157,3 +174,6 @@ class ConsentBook:
         last = self.latest(username)
         return [d for d in self.documents() if d.required
                 and not (last.get(d.key, {}).get("agreed") and last[d.key]["version"] == d.version)]
+
+
+from .profile import ServiceProfile  # noqa: E402  (ConsentBook(profile=...) 용)

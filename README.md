@@ -1,6 +1,6 @@
 # privacy_law — 개인정보 법정 문구 · 가입 동의 공용 모듈
 
-마지막 업데이트: 2026-09-29 22:25
+마지막 업데이트: 2026-09-30 21:50
 
 > 개인정보 보호법 등 법령 바뀔 때 마다 검증하고 반영하는 MCP
 
@@ -50,18 +50,52 @@ consents.outdated(username)        # 문구 개정 후 재동의가 필요한 �
 폐쇄망은 개인정보 처리자가 **고객 사업장**이므로 가입 화면 동의를 받지 않습니다(`enabled=False`, auth_core 가 라이선스로 자동 판단).
 판매 시점의 `texts/` 문구를 참고용으로 함께 전달하고, 이후 개정은 사업장이 맡습니다.
 
-## 법령 개정 감시 (mcp_hub 가 매일 실행)
+## 인증키
+
+```
+python -m privacy_law.keys set LAW_OC <법제처 OC>     # .secrets.json 에 저장 (git 제외). 환경변수 LAW_OC 가 우선
+python -m privacy_law.keys check                      # 실제로 법제처를 불러 확인
+python -m privacy_law.keys set ANTHROPIC_API_KEY <키>  # 선택: 수정안 자동 초안
+```
+
+LAW_OC 는 https://open.law.go.kr 회원가입 → OPEN API 신청에서 받는다(가입 이메일 @ 앞부분). **신청 때 이 PC/서버의 공인 IP·도메인을 등록해야 한다** — 등록 안 된 곳에서는 "사용자 정보 검증에 실패하였습니다"가 온다.
+
+## 서비스별 문구 — 프로필
+
+서비스마다 다른 사실(위탁 · 제3자 제공 · 국외 이전 · 보호책임자 · 쿠키 · 동의 없이 처리하는 항목 …)은 `ServiceProfile` 의 `practice` 로 넘기면 문구가 자동으로 채워진다. 서비스 고유 조항은 `sections`, 전용 문서 폴더는 `texts_dir`(공용 개정이 자동 반영되지 않아 점검에서 경고). 키 목록은 `privacy_law/profile.py` 머리말.
+
+```
+python -m privacy_law.requirements                 # 공용 문구 점검
+python -m privacy_law.requirements profile.json    # 서비스 프로필로 점검 (오류가 있으면 종료코드 1)
+```
+
+점검 규칙(`requirements.py`)은 법 제30조 · 시행령 제31조(처리방침 기재 사항), 제22조③(동의 없는 처리 근거), 제31조의2, 제37조의2, 제22조⑤(마케팅 선택), 정보통신망법 제50조⑧ · 시행령 제62조의3(2년마다 수신동의 확인) 등을 현행 조문 기준으로 옮긴 것이다. 규칙의 근거 조문 해시는 `requirements_basis.json` 에 있고, 조문이 바뀌면 감시가 `stale_rules` 로 알린다 — 규칙을 검토한 뒤 `python -m privacy_law.requirements rebase`.
+
+## 법령 · 외부 기준 감시 (mcp_hub 가 12시간마다 실행)
+
+`python -m privacy_law.watch [profile.json ...]` — 결과는 `reports/latest.json`. 서비스 프로필은 인자 또는 `profiles/*.json`.
+
+1. **법령** (`watch.json`): 개인정보 보호법 · 시행령, 정보통신망법, 전자상거래법 시행령(거래기록 보존), 통신비밀보호법 시행령(접속기록). 개정되면 조문 비교 → 영향 문서 수정 제안. 매핑마다 기대 제목을 적어 두고 실제 제목과 다르면 `mapping_issues` (예: 제39조의6 은 지금 '소송기록 열람 등의 청구 통지 등' 이라 매핑에서 뺐다).
+2. **규칙 근거**: `stale_rules`.
+3. **문구 점검**: 공용 문구 + 서비스 프로필 → `findings`.
+4. **개인정보보호위원회** (`sources.py`): 보도자료 · 결과의 공표 · 고시 · 안내서 · 결정문 새 글(`notices`, 관련 주제 표시). 결과의 공표 첨부(PDF · HWPX)에서 위반 조항을 뽑아 `violations`(舊법 조항 제외) → 서비스가 그 조항의 이행 내역을 밝히지 않았으면 `case_gaps`. 첨부가 이미지뿐이면 `manual_review`.
+5. **다른 회사 처리방침** (`benchmarks.json`: 네이버 · 카카오): 버전 변화(`policy_changes`)와 다른 곳은 다루는데 우리는 없는 주제(`benchmark_gaps`, 해당 여부는 practice 로 판단).
+
+PDF 추출은 `pip install -e .[pdf]` (pypdf). 테스트 fixture(`tests/fixtures/`)는 실제 응답을 잘라 둔 것이고, `PRIVACY_LAW_LIVE=1 pytest -k live` 는 실제 사이트를 부른다.
+
+### 수정 제안 흐름
 
 | 파일 | 역할 |
 |---|---|
-| `watch.json` | 감시할 법령과 조문 → 영향 문서 매핑 (예: 개인정보 보호법 제15조 → collect, privacy) |
+| `watch.json` | 감시할 법령과 조문 → 영향 문서 · 기대 제목 매핑 |
 | `law_fetcher.py` | 법제처 Open API(DRF): 현행 법령 버전(MST) · 조문 |
 | `change_detector.py` | 조 단위 비교, 영향 문서 선택 |
 | `suggestion_engine.py` | 수정 요청문 · 수정안(자동: Claude API / 수동: Claude Code) · `proposals/` 저장 |
 | `approval_workflow.py` | 승인(문구 반영 + 버전 올림 → 재동의 발생 + git 커밋) · 거절 · 감사 기록 |
-| `watch.py` | 한 바퀴 실행: `python -m privacy_law.watch` |
+| `watch.py` | 한 바퀴 실행 (위 1~5) |
+| `keys.py` · `profile.py` · `requirements.py` · `sources.py` | 인증키 · 서비스 프로필 · 점검 규칙 · 개인정보위/처리방침 수집 |
 
-- 환경변수: `LAW_OC`(법제처 인증키, 필수) · `ANTHROPIC_API_KEY`(있으면 자동 초안) · `PRIVACY_LAW_MODEL`(기본 claude-sonnet-5)
+- 인증키는 위 [인증키] 참고. `PRIVACY_LAW_MODEL`: 자동 초안 모델(기본 claude-sonnet-5)
 - 처음 실행은 기준 스냅샷(`snapshots/`)만 저장. 이후 법령일련번호가 바뀌면 조문을 비교해 제안을 만든다.
 - 제안 상태: `needs_draft`(수정안 없음) → `pending`(검토 대기) → `approved` / `rejected`. 기록은 `.audit/audit.jsonl`.
 - 수동 모드: Claude Code 에 "Privacy_Law 수정안 만들어줘" → `proposals/<id>/prompt.md` 대로 수정안을 쓰고 허브의 초안 입력으로 넣는다.

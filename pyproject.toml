@@ -4,13 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "privacy_law"
-version = "0.1.0"
+version = "0.2.0"
 description = "개인정보 관련 법정 고지 · 가입 동의 문구와 동의 기록 (Master MCP Hub 서비스 공용)"
 requires-python = ">=3.10"
 dependencies = []
+
+[project.optional-dependencies]
+pdf = ["pypdf>=4"]   # 개인정보보호위원회 처분 결과표(PDF)에서 위반 조항 추출
 
 [tool.setuptools]
 packages = ["privacy_law"]
 
 [tool.setuptools.package-data]
-privacy_law = ["texts/*", "watch.json"]
+privacy_law = ["texts/*", "watch.json", "benchmarks.json", "requirements_basis.json"]

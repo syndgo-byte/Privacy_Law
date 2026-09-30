@@ -39,6 +39,13 @@ class FakeLawAPI:
         return json.dumps({"법령": {"조문": {"조문단위": units}}}).encode()
 
 
+@pytest.fixture(autouse=True)
+def _no_real_keys(monkeypatch):
+    # 개발 PC 의 실제 키로 외부 API 를 부르지 않게
+    for k in ("LAW_OC", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+
+
 @pytest.fixture
 def env(tmp_path):
     texts = tmp_path / "texts"
@@ -48,7 +55,7 @@ def env(tmp_path):
                                  ensure_ascii=False), encoding="utf-8")
     api = FakeLawAPI()
     root = tmp_path / "repo"
-    kw = dict(fetcher=LawFetcher("test", get=api), root=root, texts_dir=texts, config=config)
+    kw = dict(fetcher=LawFetcher("test", get=api), root=root, texts_dir=texts, config=config, sources=False)
     return api, root, texts, kw
 
 
