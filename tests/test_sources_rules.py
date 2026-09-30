@@ -283,7 +283,10 @@ def test_disposition_download_gives_up_into_manual_review(tmp_path):
         r = src.collect(tmp_path, fake_web, BENCH)
     failed = [d for d in r["dispositions"] if d["unparsed"]]
     assert failed and all(d["articles"] == {} and "받기 실패" in d["unparsed"][0] for d in failed)
-    assert src.collect(tmp_path, fake_web, BENCH)["dispositions"] == []      # 더는 시도하지 않음
+    again = src.collect(tmp_path, fake_web, BENCH)
+    assert again["dispositions"] == []                                       # 더는 시도하지 않음
+    # 수동 확인 대상은 다음 실행에도 남는다(한 번 놓친 알림이 사라지지 않게)
+    assert {d["ntt_id"] for d in again["unread"]} == {d["ntt_id"] for d in failed}
 
 
 def test_policy_change_detected(tmp_path):

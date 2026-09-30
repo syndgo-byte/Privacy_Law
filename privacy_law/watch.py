@@ -182,7 +182,7 @@ def run(*, fetcher: LawFetcher | None = None, root: Path = HOME, texts_dir: Path
             result[k] = s[k]
         # 첨부가 이미지뿐이라 위반 조항을 못 뽑은 처분 — 통계에서 빠지므로 사람이 봐야 한다
         result["manual_review"] = [{k: d[k] for k in ("ntt_id", "title", "date", "url", "unparsed")}
-                                   for d in s["dispositions"] if d.get("unparsed") and not d["articles"]]
+                                   for d in s.get("unread", [])]
         result["benchmarks"] = [{k: p[k] for k in ("name", "url", "version", "hash", "topics")} for p in s["policies"]]
         for svc, book, practice in books:
             if practice or svc == "(공용 문구)":

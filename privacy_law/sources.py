@@ -300,6 +300,9 @@ def collect(root: Path, get=_default_get, benchmarks: list[dict] | None = None) 
     for d in disp:
         violations.update({a: 1 for a in d["articles"]})   # 처분 공표 1건 안의 같은 조항은 1로 센다
     res["violations"] = dict(violations)
+    # 첨부가 이미지뿐이거나 받기 실패라 위반 조항을 못 뽑은 처분 — 이번에 새로 읽은 것만이 아니라 저장된 전부.
+    # (한 번 놓친 알림이 다음 실행에 사라지지 않게. 같은 알림 반복은 받는 쪽이 key 로 거른다.)
+    res["unread"] = [d for d in disp if d.get("unparsed") and not d["articles"]]
 
     old = {p["name"]: p for p in state.get("policies", [])}
     for b in (load_benchmarks() if benchmarks is None else benchmarks):
