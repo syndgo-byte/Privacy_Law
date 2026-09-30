@@ -114,10 +114,20 @@ def test_check_law_oc_reports_auth_failure(tmp_path):
     assert not keys.check_law_oc(tmp_path / "none")["ok"]
 
 
-def test_watch_without_key_uses_web(tmp_path):
+def test_watch_without_key_uses_web(tmp_path, monkeypatch):
+    """LAW_OC 가 없으면 법제처 웹 화면으로 받는다(인증키 불필요). 네트워크 없이 선택만 확인."""
+    import privacy_law.watch as w
+    monkeypatch.delenv("LAW_OC", raising=False)
+    used = []
+
+    class FakeWeb:
+        def current(self, name):
+            used.append(name)
+            raise LawFetchError("테스트: 네트워크 안 씀")
+    monkeypatch.setattr(w, "WebLawFetcher", FakeWeb)
     r = run(root=tmp_path, sources=False)
-    assert not r["errors"]                     # 웹에서 법령을 받는다(인증키 불필요)
-    assert r["findings"]["(공용 문구)"]["summary"]["error"] > 0
+    assert used and all("LAW_OC" not in e for e in r["errors"])
+    assert r["findings"]["(공용 문구)"]["summary"]["error"] > 0     # 법령을 못 받아도 문구 점검은 한다
 
 
 # ---- 조문 파싱 (실제 응답) ----

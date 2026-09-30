@@ -226,10 +226,21 @@ def test_fetch_failure_is_reported_not_raised(env):
     assert r["changed"] == [] and "연결 거부" in r["errors"][0]
 
 
-def test_web_works_without_key(env, monkeypatch):
-    api, root, texts, kw = env
-    monkeypatch.delenv("LAW_OC", raising=False)
-    kw.pop("fetcher")
-    r = run(**kw)
-    assert not r["errors"]                     # 웹에서 법령을 받는다
-    assert r["checked"]                        # 조문도 받아진다
+def test_web_parser_and_version_key():
+    """웹 화면(lsInfoR.do) 조문 파싱 · 삭제 조문 무시 · 시행 전 개정까지 공포일로 버전 구분."""
+    from privacy_law.law_fetcher import WebLawFetcher
+    pop = "<script>lsPopViewAll2('283839', '', '', '20260911', 'Y', '','010202','0');</script>"
+    body = ('<div>[시행 2026. 9. 11.] [법률 제21445호, 2026. 3. 10., 일부개정]</div>'
+            '<a name="J2:0" id="J2:0"></a><div><p>제2조(정의) 뜻은 다음과 같다. <span>&lt;개정 2026. 9. 8.&gt;</span></p>'
+            '<p>제2장 개인정보 보호정책의 수립 등</p></div>'
+            '<a name="J29:0" id="J29:0"></a><div><p>제29조(안전조치의무) 조치를 하여야 한다. &lt;개정 2015. 7. 24.&gt;</p></div>'
+            '<div id="arDivArea">부칙</div>')
+    get = lambda url: (pop if "lsInfoP" in url else body).encode()
+    v = WebLawFetcher(get=get).current(LAW)
+    assert v.mst == "283839" and v.effective == "20260911"
+    assert v.promulgated == "20260908" and v.key == "283839:20260908"      # 시행 전 개정(2026.9.8) 반영
+    assert v.titles == {"2": "정의", "29": "안전조치의무"} and v.changed == ("2",)
+    assert "제2장" not in v.articles["2"]                                   # 다음 장 제목은 빼기
+    api_style = {"2": v.articles["2"].replace("“", '"'), "29": "제29조(안전조치의무) 조치를 하여야 한다. <개정 2015.7.24>",
+                 "8": "제8조 삭제 <2020.2.4>"}
+    assert diff_articles(api_style, v.articles) == []                       # 표기 차이 · 삭제 조문은 변경 아님
