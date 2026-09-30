@@ -12,7 +12,7 @@ from pathlib import Path
 from . import DEFAULT_DIR
 from .approval_workflow import audit
 from .change_detector import affected_documents, diff_articles
-from .law_fetcher import LawFetcher, LawFetchError, LawVersion
+from .law_fetcher import LawFetcher, MockLawFetcher, LawFetchError, LawVersion
 from .suggestion_engine import ProposalStore, build_prompt
 
 HOME = Path(os.environ.get("PRIVACY_LAW_HOME") or Path(__file__).resolve().parent.parent)
@@ -45,7 +45,9 @@ def run(*, fetcher: LawFetcher | None = None, root: Path = HOME, texts_dir: Path
     root = Path(root)
     result = {"checked": [], "changed": [], "errors": []}
     try:
-        fetcher = fetcher or LawFetcher(os.environ.get("LAW_OC", ""))
+        oc = os.environ.get("LAW_OC", "")
+        if fetcher is None:
+            fetcher = LawFetcher(oc) if oc else MockLawFetcher()
     except LawFetchError as e:
         result["errors"].append(str(e))
         return result

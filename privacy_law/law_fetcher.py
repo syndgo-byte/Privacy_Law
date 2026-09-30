@@ -37,6 +37,42 @@ def _as_list(v):
     return v if isinstance(v, list) else [v]
 
 
+class MockLawFetcher:
+    """테스트용 가짜 법령 소싱. LAW_OC 가 없을 때 쓴다."""
+
+    def __init__(self):
+        self._data = {
+            "개인정보 보호법": LawVersion(
+                name="개인정보 보호법",
+                mst="10500068",
+                promulgated="20230314",
+                effective="20230315",
+                articles={
+                    "15": "개인정보의 수집 · 이용",
+                    "17": "제3자 제공",
+                    "18": "정보주체의 동의",
+                    "22": "개인정보의 처리 목적 변경 금지",
+                    "23": "안전성 확보 조치",
+                    "24": "개인정보의 정확성 · 완전성 보장",
+                    "25": "개인정보의 보유 · 이용 기간",
+                    "26": "파기",
+                    "27": "제3자에게 제공 시 동의",
+                    "28": "개인정보 처리의 위탁",
+                    "29": "국외 이전",
+                    "30": "개인정보 처리방침",
+                }
+            ),
+        }
+
+    def current(self, name: str) -> LawVersion:
+        if name not in self._data:
+            raise LawFetchError(f"테스트 데이터에 없음: {name}. LAW_OC를 설정하면 실제 법령을 조회합니다.")
+        return self._data[name]
+
+    def with_articles(self, v: LawVersion) -> LawVersion:
+        return v
+
+
 def _flatten(v) -> str:
     """항 · 호 · 목이 중첩 dict/list 로 오므로 글자만 이어 붙인다."""
     if isinstance(v, str):
@@ -51,7 +87,8 @@ def _flatten(v) -> str:
 class LawFetcher:
     def __init__(self, oc: str, get=_default_get):
         if not oc:
-            raise LawFetchError("LAW_OC(법제처 Open API 인증키)가 없습니다")
+            raise LawFetchError("LAW_OC(법제처 Open API 인증키) 환경 변수가 필요합니다. "
+                              "https://open.law.go.kr 에서 신청 후 LAW_OC=<인증키> 로 설정하세요.")
         self.oc = oc
         self._get = get
 
