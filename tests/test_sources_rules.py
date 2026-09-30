@@ -358,3 +358,11 @@ def test_live_pipc_and_policies(tmp_path):
     r = src.collect(tmp_path, benchmarks=BENCH)
     assert r["violations"], r["errors"]
     assert len(r["policies"]) == 2
+
+
+def test_article_hash_ignores_web_api_formatting():
+    """웹(“ ” · 2020. 2. 4. · [전문개정 …])과 API(" · 2020.2.4)의 표기 차이로 규칙 근거가 바뀐 것으로 보지 않는다."""
+    api = '제30조(처리방침) ① "처리방침"을 정하여야 한다. <개정 2020.2.4>'
+    web = "제30조(처리방침)\n① “처리방침”을 정하여야 한다. <개정 2020. 2. 4.>\n[전문개정 2023. 3. 14.]"
+    assert article_hash(api) == article_hash(web)
+    assert article_hash(api) != article_hash(api.replace("정하여야", "공개하여야"))

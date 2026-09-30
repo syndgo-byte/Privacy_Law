@@ -18,6 +18,8 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .change_detector import _norm
+
 PIPA = "개인정보 보호법"
 DECREE = "개인정보 보호법 시행령"
 NETWORK = "정보통신망 이용촉진 및 정보보호 등에 관한 법률"
@@ -211,7 +213,8 @@ def case_gaps(practice: dict, violations: dict[str, int]) -> list[dict]:
 # ---- 규칙의 근거 조문 추적 ----
 
 def article_hash(text: str) -> str:
-    return hashlib.sha256(" ".join(text.split()).encode("utf-8")).hexdigest()[:16]
+    """조문 비교용 해시. 표기 차이(웹 · API 따옴표 · 날짜 표기 · 연혁 주석 · 공백)는 무시한다."""
+    return hashlib.sha256(_norm(text).encode("utf-8")).hexdigest()[:16]
 
 
 def basis_articles() -> dict[str, list[str]]:
