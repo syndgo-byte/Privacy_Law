@@ -1,6 +1,8 @@
 """두 법령 버전의 조문을 조 단위로 비교하고, 영향받는 동의 문서를 고른다."""
 from __future__ import annotations
 
+import re
+
 from dataclasses import asdict, dataclass
 
 
@@ -15,8 +17,16 @@ class ArticleChange:
         return asdict(self)
 
 
+_DATE = re.compile(r"(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?")
+_NOTE = re.compile(r"\[[^\]]*(?:개정|신설|이동|삭제|종전)[^\]]*\]")    # [전문개정 2012. 8. 13.] 등 연혁 표기
+_QUOTES = str.maketrans({"“": '"', "”": '"', "‘": "'", "’": "'"})
+
+
 def _norm(text: str) -> str:
-    return " ".join(text.split())
+    """출처(API · 웹 화면)마다 다른 표기를 맞춘다: 공백 · 따옴표 모양 · 날짜 점 · 연혁 표기. 글자 내용만 비교."""
+    text = _NOTE.sub("", text.translate(_QUOTES))
+    text = _DATE.sub(lambda m: f"{m[1]}.{int(m[2])}.{int(m[3])}", text)
+    return "".join(text.split())
 
 
 def diff_articles(old: dict[str, str], new: dict[str, str]) -> list[ArticleChange]:
@@ -24,6 +34,8 @@ def diff_articles(old: dict[str, str], new: dict[str, str]) -> list[ArticleChang
     out = []
     for no in sorted(old.keys() | new.keys(), key=_order):
         a, b = old.get(no), new.get(no)
+        if _deleted(a) and (b is None or _deleted(b)) or (a is None and _deleted(b)):
+            continue   # 삭제 조문: API 는 '제8조 삭제' 로 주고 웹 화면은 아예 안 보여 준다 — 같은 상태
         if a is None:
             out.append(ArticleChange(no, "added", "", b))
         elif b is None:
@@ -31,6 +43,13 @@ def diff_articles(old: dict[str, str], new: dict[str, str]) -> list[ArticleChang
         elif _norm(a) != _norm(b):
             out.append(ArticleChange(no, "modified", a, b))
     return out
+
+
+_DELETED = re.compile(r"^제\d+조(?:의\d+)?\s*삭제")
+
+
+def _deleted(text: str | None) -> bool:
+    return bool(text) and bool(_DELETED.match(text))
 
 
 def _order(no: str):

@@ -114,10 +114,10 @@ def test_check_law_oc_reports_auth_failure(tmp_path):
     assert not keys.check_law_oc(tmp_path / "none")["ok"]
 
 
-def test_watch_without_key_tells_how_to_set_it(tmp_path):
+def test_watch_without_key_uses_web(tmp_path):
     r = run(root=tmp_path, sources=False)
-    assert "LAW_OC" in r["errors"][0] and "privacy_law.keys set" in r["errors"][0]
-    assert r["findings"]["(공용 문구)"]["summary"]["error"] > 0     # 법령을 못 받아도 문구 점검은 한다
+    assert not r["errors"]                     # 웹에서 법령을 받는다(인증키 불필요)
+    assert r["findings"]["(공용 문구)"]["summary"]["error"] > 0
 
 
 # ---- 조문 파싱 (실제 응답) ----

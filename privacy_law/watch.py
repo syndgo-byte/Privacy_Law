@@ -20,7 +20,7 @@ from . import DEFAULT_DIR, HOME, ConsentBook
 from .approval_workflow import audit
 from .change_detector import affected_documents, diff_articles
 from .keys import get_key
-from .law_fetcher import LawFetcher, LawFetchError, LawVersion
+from .law_fetcher import LawFetcher, LawFetchError, LawVersion, WebLawFetcher
 from .profile import ServiceProfile
 from .requirements import case_gaps, check_book, plain, stale_rules, summarize
 from .suggestion_engine import ProposalStore, build_prompt
@@ -107,7 +107,9 @@ def run(*, fetcher: LawFetcher | None = None, root: Path = HOME, texts_dir: Path
     # ---- 1. 법령 ----
     try:
         if fetcher is None:
-            fetcher = LawFetcher(get_key("LAW_OC", root))
+            # 인증키가 있으면 Open API, 없으면 법제처 웹 화면(인증키 불필요)
+            oc = get_key("LAW_OC", root)
+            fetcher = LawFetcher(oc) if oc else WebLawFetcher()
     except LawFetchError as e:
         result["errors"].append(str(e))
         fetcher = None
@@ -124,10 +126,11 @@ def run(*, fetcher: LawFetcher | None = None, root: Path = HOME, texts_dir: Path
             head = fetcher.current(name)
             prev = _load_snap(root, name)
             result["checked"].append({"law": name, "mst": head.mst, "effective": head.effective})
-            full = prev if prev and prev.mst == head.mst and prev.titles else fetcher.with_articles(head)
+            same = prev and prev.key == head.key
+            full = prev if same and prev.titles else (head if head.articles else fetcher.with_articles(head))
             current[name] = full.articles
             result["mapping_issues"].extend(mapping_issues(name, maps, full))
-            if prev and prev.mst == head.mst:
+            if same:
                 if full is not prev:
                     _save_snap(root, full)      # 예전 형식 스냅샷(제목 없음) 보강
                 continue

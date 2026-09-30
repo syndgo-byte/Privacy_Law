@@ -226,8 +226,10 @@ def test_fetch_failure_is_reported_not_raised(env):
     assert r["changed"] == [] and "연결 거부" in r["errors"][0]
 
 
-def test_missing_key_is_reported(env, monkeypatch):
+def test_web_works_without_key(env, monkeypatch):
     api, root, texts, kw = env
     monkeypatch.delenv("LAW_OC", raising=False)
     kw.pop("fetcher")
-    assert "LAW_OC" in run(**kw)["errors"][0]
+    r = run(**kw)
+    assert not r["errors"]                     # 웹에서 법령을 받는다
+    assert r["checked"]                        # 조문도 받아진다
